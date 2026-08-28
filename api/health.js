@@ -1,0 +1,1 @@
+export default async function handler(req,res){res.setHeader("Cache-Control","no-store");res.setHeader("X-Content-Type-Options","nosniff");return res.status(200).json({ok:true,service:"netregent",runtime:"native",n8n:false,time:new Date().toISOString()})}
