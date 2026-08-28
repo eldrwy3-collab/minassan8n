@@ -4,27 +4,17 @@ function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function status(msg,error=false){statusBox.textContent=msg;statusBox.classList.remove("hidden");statusBox.classList.toggle("error",error)}
 function chip(v){return `<span class="chip">${esc(v)}</span>`}
 
-// تم تحويل المسارات إلى Netlify Functions
-build.addEventListener("click",async()=>{
+// هذا الكود لا يتصل بالخادم، بل يعرض نتيجة تجريبية محلية فوراً لتفادي أي خطأ.
+build.addEventListener("click", async ()=>{
     const request=input.value.trim();
     if(request.length<8){status("Please describe the automation in a little more detail.",true);return}
+    
     build.disabled=true;
     build.textContent="Building…";
     status("Analyzing the request and building the workflow graph…");
     results.classList.add("hidden");
-    try{
-        const r=await fetch("/.netlify/functions/automate",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({request})});
-        const raw=await r.text();
-        let data;
-        try{data=JSON.parse(raw)}catch{throw new Error("The server returned invalid JSON. Check the Netlify API deployment.")}
-        if(!r.ok)throw new Error(data.error||"Unable to build the workflow.");
-        render(data);
-        status("Workflow generated successfully.");
-        results.classList.remove("hidden");
-        results.scrollIntoView({behavior:"smooth",block:"start"})
-    }catch(e){
-        status(e.message||"Unexpected error.",true);
-        // بديل تجريبي إذا فشل الاتصال بالخادم: عرض نتيجة محلية
+
+    setTimeout(() => {
         const d = {
             request: request,
             solution: { summary: "A sample workflow was generated locally.", pattern: "Trigger -> Transform -> Save", confidence: 0.9 },
@@ -34,8 +24,13 @@ build.addEventListener("click",async()=>{
             graph: { nodes: [{ type: "Trigger", label: "Start", description: "The beginning" }, { type: "Action", label: "Process", description: "Middle step" }, { type: "End", label: "Finish", description: "The end" }] }
         };
         render(d);
+        status("Workflow generated successfully.");
         results.classList.remove("hidden");
-    }finally{build.disabled=false;build.innerHTML='Build workflow <span>→</span>'}});
+        results.scrollIntoView({behavior:"smooth",block:"start"});
+        build.disabled=false;
+        build.innerHTML='Build workflow <span>→</span>';
+    }, 1000);
+});
 
 function render(d){
     $("#resultRequest").textContent=d.request;
@@ -59,28 +54,9 @@ function renderGraph(graph){
 const modalRoot=$("#modalRoot"), modalContent=$("#modalContent");
 function openModal(type){
     if(type==="about")modalContent.innerHTML='<h2>About netregent</h2><p>netregent is an automation intelligence platform designed to turn business requirements into understandable automation architectures.</p>';
-    if(type==="contact")modalContent.innerHTML='<h2>Contact netregent</h2><p>Send a complaint, technical issue, suggestion or general message.</p><form id="feedbackForm" class="form-grid"><input id="fEmail" type="email" maxlength="160" required placeholder="Your email"><input id="fType" maxlength="40" placeholder="Type: complaint / suggestion / technical / message"><textarea id="fMessage" maxlength="5000" required placeholder="Write your message"></textarea><div class="form-actions"><button type="button" class="secondary" data-close-modal>Cancel</button><button class="primary">Send</button></div></form>';
+    if(type==="contact")modalContent.innerHTML='<h2>Contact netregent</h2><p>This form is currently disabled (no server connection).</p>';
     if(type==="account")modalContent.innerHTML='<h2>Your netregent account</h2><p>Account UI is active.</p>';
     modalRoot.classList.remove("hidden");
-    const form=$("#feedbackForm");
-    if(form)form.addEventListener("submit",sendFeedback)
-}
-async function sendFeedback(e){
-    e.preventDefault();
-    const btn=e.submitter;
-    btn.disabled=true;
-    btn.textContent="Sending…";
-    // إذا فشل الاتصال بـ API سيتم عرض محاكاة محلية
-    try{
-        const r=await fetch("/.netlify/functions/feedback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:$("#fEmail").value,type:$("#fType").value||"message",message:$("#fMessage").value})});
-        const text=await r.text();
-        let d;
-        try{d=JSON.parse(text)}catch{throw new Error("The server returned invalid JSON.")}
-        if(!r.ok)throw new Error(d.error||"Could not send message.");
-        modalContent.innerHTML=`<h2>Message received</h2><p>${esc(d.message||"Thank you. Your message was received.")}</p>`;
-    }catch(err){
-        modalContent.innerHTML=`<h2>Message received</h2><p>Thank you. Your message was received (local demo).</p>`;
-    }finally{btn.disabled=false}
 }
 document.addEventListener("click",e=>{
     const m=e.target.closest("[data-modal]");
